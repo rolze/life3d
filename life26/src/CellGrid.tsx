@@ -1,5 +1,5 @@
 import React, { useRef, useState, useMemo } from 'react';
-import { useFrame, type ThreeEvent } from '@react-three/fiber';
+import { type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { type Grid3D } from './gameLogic';
 
