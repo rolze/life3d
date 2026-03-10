@@ -1,7 +1,7 @@
 import React, { useRef, useState, useMemo } from 'react';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
-import { type Grid3D, GRID_SIZE } from './gameLogic';
+import { type Grid3D } from './gameLogic';
 
 interface GridProps {
   grid: Grid3D;
@@ -21,8 +21,9 @@ export const CellGrid: React.FC<GridProps> = ({
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const [hoveredPos, setHoveredPos] = useState<[number, number, number] | null>(null);
 
+  const gridSize = grid.length;
   const cellStride = cellSize + gap;
-  const totalSize = GRID_SIZE * cellStride - gap;
+  const totalSize = gridSize * cellStride - gap;
   const offset = totalSize / 2 - cellSize / 2;
 
   const dummy = useMemo(() => new THREE.Object3D(), []);
@@ -30,14 +31,14 @@ export const CellGrid: React.FC<GridProps> = ({
   // X is right/left, Y is up/down, Z is forward/backward
   const planeY = activeLayer * cellStride - offset;
 
-  // We update instances continuously
-  useFrame(() => {
+  // Update instances only when the grid changes to prevent massive performance drops on larger sizes
+  React.useEffect(() => {
     if (!meshRef.current) return;
 
     let i = 0;
-    for (let x = 0; x < GRID_SIZE; x++) {
-      for (let y = 0; y < GRID_SIZE; y++) {
-        for (let z = 0; z < GRID_SIZE; z++) {
+    for (let x = 0; x < gridSize; x++) {
+      for (let y = 0; y < gridSize; y++) {
+        for (let z = 0; z < gridSize; z++) {
           const isAlive = grid[x][y][z];
 
           dummy.position.set(
@@ -59,7 +60,7 @@ export const CellGrid: React.FC<GridProps> = ({
       }
     }
     meshRef.current.instanceMatrix.needsUpdate = true;
-  });
+  }, [grid, gridSize, cellStride, offset, dummy]);
 
   const handlePointerMove = (e: ThreeEvent<PointerEvent>) => {
     // We only care about intersections on the active plane
@@ -70,7 +71,7 @@ export const CellGrid: React.FC<GridProps> = ({
     let gridZ = Math.round((point.z + offset) / cellStride);
 
     // Check if the pointer is roughly within bounds
-    if (gridX >= 0 && gridX < GRID_SIZE && gridZ >= 0 && gridZ < GRID_SIZE) {
+    if (gridX >= 0 && gridX < gridSize && gridZ >= 0 && gridZ < gridSize) {
       setHoveredPos([gridX, activeLayer, gridZ]);
     } else {
       setHoveredPos(null);
@@ -92,7 +93,7 @@ export const CellGrid: React.FC<GridProps> = ({
     <group>
       <instancedMesh
         ref={meshRef}
-        args={[undefined, undefined, GRID_SIZE * GRID_SIZE * GRID_SIZE]}
+        args={[undefined, undefined, gridSize * gridSize * gridSize]}
         castShadow
         receiveShadow
       >
@@ -115,7 +116,7 @@ export const CellGrid: React.FC<GridProps> = ({
 
       {/* Grid helper for active layer slice */}
       <gridHelper
-        args={[totalSize + cellStride, GRID_SIZE, 0x888888, 0x444444]}
+        args={[totalSize + cellStride, gridSize, 0x888888, 0x444444]}
         position={[0, planeY, 0]}
       />
 
