@@ -1,7 +1,8 @@
-import React, { useRef, useState, useMemo } from 'react';
+import React, { useRef, useState, useMemo, useEffect } from 'react';
 import { type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { type Grid3D } from './gameLogic';
+import { ParticleSystem } from './ParticleSystem';
 
 interface GridProps {
   grid: Grid3D;
@@ -28,11 +29,49 @@ export const CellGrid: React.FC<GridProps> = ({
 
   const dummy = useMemo(() => new THREE.Object3D(), []);
 
+  // Track previous grid state to detect cell deaths
+  const prevGridRef = useRef<Grid3D>(grid);
+
+  // Track active particle systems
+  const [explosions, setExplosions] = useState<Array<{ id: string; x: number; y: number; z: number }>>([]);
+
   // X is right/left, Y is up/down, Z is forward/backward
   const planeY = activeLayer * cellStride - offset;
 
   // Update instances only when the grid changes to prevent massive performance drops on larger sizes
-  React.useEffect(() => {
+  useEffect(() => {
+    // Detect cell deaths and spawn explosions
+    const prevGrid = prevGridRef.current;
+    const newExplosions: Array<{ id: string; x: number; y: number; z: number }> = [];
+
+    // Skip explosion detection if the grid size changed (e.g. clear/reset or resize)
+    if (prevGrid.length === grid.length) {
+      for (let x = 0; x < gridSize; x++) {
+        for (let y = 0; y < gridSize; y++) {
+          for (let z = 0; z < gridSize; z++) {
+            if (prevGrid[x][y][z] && !grid[x][y][z]) {
+              // Cell died, spawn explosion
+              newExplosions.push({
+                id: `${x}-${y}-${z}-${Date.now()}-${Math.random()}`,
+                x,
+                y,
+                z,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    if (newExplosions.length > 0) {
+      // Defer state update to avoid cascading renders
+      setTimeout(() => {
+        setExplosions(prev => [...prev, ...newExplosions]);
+      }, 0);
+    }
+
+    prevGridRef.current = grid;
+
     if (!meshRef.current) return;
 
     let i = 0;
@@ -67,8 +106,8 @@ export const CellGrid: React.FC<GridProps> = ({
     const point = e.point;
 
     // Map from world coordinates to grid index
-    let gridX = Math.round((point.x + offset) / cellStride);
-    let gridZ = Math.round((point.z + offset) / cellStride);
+    const gridX = Math.round((point.x + offset) / cellStride);
+    const gridZ = Math.round((point.z + offset) / cellStride);
 
     // Check if the pointer is roughly within bounds
     if (gridX >= 0 && gridX < gridSize && gridZ >= 0 && gridZ < gridSize) {
@@ -98,7 +137,13 @@ export const CellGrid: React.FC<GridProps> = ({
         receiveShadow
       >
         <boxGeometry args={[cellSize, cellSize, cellSize]} />
-        <meshStandardMaterial color="#4CAF50" roughness={0.4} />
+        <meshStandardMaterial
+          color="#4CAF50"
+          emissive="#2E7D32"
+          emissiveIntensity={2}
+          toneMapped={false}
+          roughness={0.4}
+        />
       </instancedMesh>
 
       {/* Invisible catching plane */}
@@ -116,15 +161,30 @@ export const CellGrid: React.FC<GridProps> = ({
 
       {/* Grid helper for active layer slice */}
       <gridHelper
-        args={[totalSize + cellStride, gridSize, 0x888888, 0x444444]}
+        args={[totalSize + cellStride, gridSize, 0x444444, 0x222222]}
         position={[0, planeY, 0]}
       />
 
       {/* Visual wireframe cube indicating the full 15x15x15 boundary */}
       <mesh>
         <boxGeometry args={[totalSize + cellStride, totalSize + cellStride, totalSize + cellStride]} />
-        <meshBasicMaterial color="#333333" wireframe transparent opacity={0.2} />
+        <meshBasicMaterial color="#222222" wireframe transparent opacity={0.1} />
       </mesh>
+
+      {/* Explosions for dying cells */}
+      {explosions.map((exp) => (
+        <ParticleSystem
+          key={exp.id}
+          position={[
+            exp.x * cellStride - offset,
+            exp.y * cellStride - offset,
+            exp.z * cellStride - offset,
+          ]}
+          onComplete={() => {
+            setExplosions((prev) => prev.filter((e) => e.id !== exp.id));
+          }}
+        />
+      ))}
 
       {/* Hover preview box */}
       {hoveredPos && (
@@ -138,6 +198,9 @@ export const CellGrid: React.FC<GridProps> = ({
           <boxGeometry args={[cellSize, cellSize, cellSize]} />
           <meshStandardMaterial
             color={grid[hoveredPos[0]][hoveredPos[1]][hoveredPos[2]] ? "#FF5252" : "#81C784"}
+            emissive={grid[hoveredPos[0]][hoveredPos[1]][hoveredPos[2]] ? "#D32F2F" : "#388E3C"}
+            emissiveIntensity={1}
+            toneMapped={false}
             transparent
             opacity={0.6}
           />
