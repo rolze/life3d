@@ -3,22 +3,36 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { useControls, button } from 'leva';
 import { CellGrid } from './CellGrid';
-import { createEmptyGrid, nextGeneration, GRID_SIZE } from './gameLogic';
+import { createEmptyGrid, nextGeneration } from './gameLogic';
 
 function App() {
-  const [grid, setGrid] = useState(createEmptyGrid());
-  const [activeLayer, setActiveLayer] = useState(Math.floor(GRID_SIZE / 2));
+  const [gridSize, setGridSize] = useState(15);
+  const [grid, setGrid] = useState(createEmptyGrid(15));
+  const [activeLayer, setActiveLayer] = useState(Math.floor(15 / 2));
   const [isRunning, setIsRunning] = useState(false);
+  const [isShiftDown, setIsShiftDown] = useState(false);
 
   // Need a ref for the interval to be able to clear it
   const intervalRef = useRef<number | null>(null);
 
   // Leva Controls
   const [{ speed }, setLeva] = useControls(() => ({
+    gridSizeCtrl: {
+      value: gridSize,
+      min: 10,
+      max: 100,
+      step: 1,
+      label: 'Grid Size',
+      onChange: (val) => {
+        setGridSize(val);
+        setGrid(createEmptyGrid(val));
+        setActiveLayer(Math.floor(val / 2));
+      }
+    },
     activeLayerCtrl: {
       value: activeLayer,
       min: 0,
-      max: GRID_SIZE - 1,
+      max: gridSize - 1,
       step: 1,
       label: 'Active Layer',
       onChange: (val) => setActiveLayer(val),
@@ -38,26 +52,37 @@ function App() {
     }),
     Clear: button(() => {
       setIsRunning(false);
-      setGrid(createEmptyGrid());
+      setGrid(g => createEmptyGrid(g.length));
     }),
     'Reset Pattern': button(() => {
       setIsRunning(false);
-      const newGrid = createEmptyGrid();
-      const mid = Math.floor(GRID_SIZE / 2);
-      // Small 3D oscillator/glider-like shape
-      newGrid[mid][mid][mid] = true;
-      newGrid[mid][mid + 1][mid] = true;
-      newGrid[mid][mid - 1][mid] = true;
-      newGrid[mid + 1][mid][mid] = true;
-      newGrid[mid][mid][mid + 1] = true;
-      setGrid(newGrid);
+      setGrid(g => {
+        const size = g.length;
+        const newGrid = createEmptyGrid(size);
+        const mid = Math.floor(size / 2);
+        newGrid[mid][mid][mid] = true;
+        newGrid[mid][mid + 1][mid] = true;
+        newGrid[mid][mid - 1][mid] = true;
+        newGrid[mid + 1][mid][mid] = true;
+        newGrid[mid][mid][mid + 1] = true;
+        return newGrid;
+      });
     })
   }));
 
-  // Sync state to Leva when activeLayer changes via scroll
+  // Sync state to Leva when activeLayer or gridSize changes via scroll / reset
   useEffect(() => {
     setLeva({ activeLayerCtrl: activeLayer });
   }, [activeLayer, setLeva]);
+
+  // Need to update the max bound for the active layer slider when grid size changes
+  useEffect(() => {
+    setLeva({
+      activeLayerCtrl: {
+        max: gridSize - 1,
+      } as any
+    });
+  }, [gridSize, setLeva]);
 
   // Handle Play/Pause timer
   useEffect(() => {
@@ -89,6 +114,23 @@ function App() {
     });
   }, []);
 
+  // Track shift key for disabling zoom
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') setIsShiftDown(true);
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') setIsShiftDown(false);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
+
   // Handle shift+mousewheel to change active layer
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
@@ -97,7 +139,7 @@ function App() {
         setActiveLayer(prev => {
           let nextLayer = prev;
           if (e.deltaY < 0) {
-            nextLayer = Math.min(prev + 1, GRID_SIZE - 1);
+            nextLayer = Math.min(prev + 1, gridSize - 1);
           } else if (e.deltaY > 0) {
             nextLayer = Math.max(prev - 1, 0);
           }
@@ -144,7 +186,7 @@ function App() {
         />
 
         {/* Disable zooming when shift is held down */}
-        <OrbitControls makeDefault enableDamping={true} dampingFactor={0.05} />
+        <OrbitControls makeDefault enableZoom={!isShiftDown} enableDamping={true} dampingFactor={0.05} />
       </Canvas>
     </div>
   );
