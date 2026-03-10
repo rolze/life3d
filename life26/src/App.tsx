@@ -174,7 +174,7 @@ function App() {
         position: 'absolute', top: 20, left: 20, zIndex: 10, color: '#e0e0e0',
         fontFamily: 'sans-serif', pointerEvents: 'none'
       }}>
-        <h2 style={{ margin: '0 0 10px 0', textShadow: '1px 1px 2px black' }}>Life 3D</h2>
+        <h2 style={{ margin: '0 0 10px 0', textShadow: '1px 1px 2px black' }}>Life26</h2>
         <p style={{ margin: '0 0 5px 0', fontSize: '14px', textShadow: '1px 1px 2px black' }}>
           {isRunning ? '🟢 Running' : '🔴 Paused'}
         </p>
