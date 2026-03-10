@@ -2,8 +2,30 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { useControls, button } from 'leva';
+import { useThree } from '@react-three/fiber';
 import { CellGrid } from './CellGrid';
 import { createEmptyGrid, nextGeneration } from './gameLogic';
+
+const CameraManager = ({ gridSize, isShiftDown }: { gridSize: number, isShiftDown: boolean }) => {
+  const { camera } = useThree();
+  const controlsRef = useRef<any>(null);
+
+  useEffect(() => {
+    // Reset camera position when grid size changes to keep it in view
+    // A simple heuristic: distance ~ gridSize * 1.5
+    const dist = Math.max(22, gridSize * 1.5);
+    camera.position.set(dist, dist * 0.7, dist);
+    camera.lookAt(0, 0, 0);
+    camera.updateProjectionMatrix();
+
+    if (controlsRef.current) {
+      controlsRef.current.target.set(0, 0, 0);
+      controlsRef.current.update();
+    }
+  }, [gridSize, camera]);
+
+  return <OrbitControls ref={controlsRef} makeDefault enableZoom={!isShiftDown} enableDamping={true} dampingFactor={0.05} target={[0, 0, 0]} />;
+};
 
 function App() {
   const [gridSize, setGridSize] = useState(15);
@@ -16,6 +38,7 @@ function App() {
   const intervalRef = useRef<number | null>(null);
 
   // Leva Controls
+  // Using gridSize as a dependency rebuilds the controls so the `max` on activeLayerCtrl is accurate
   const [{ speed }, setLeva] = useControls(() => ({
     gridSizeCtrl: {
       value: gridSize,
@@ -26,13 +49,13 @@ function App() {
       onChange: (val) => {
         setGridSize(val);
         setGrid(createEmptyGrid(val));
-        setActiveLayer(Math.floor(val / 2));
+        setActiveLayer(prev => Math.min(prev, val - 1));
       }
     },
     activeLayerCtrl: {
       value: activeLayer,
       min: 0,
-      max: gridSize - 1,
+      max: gridSize - 1, // dynamically bound
       step: 1,
       label: 'Active Layer',
       onChange: (val) => setActiveLayer(val),
@@ -68,21 +91,14 @@ function App() {
         return newGrid;
       });
     })
-  }));
+  }), [gridSize]); // Dependency array here ensures `max` bound is updated when gridSize changes
 
-  // Sync state to Leva when activeLayer or gridSize changes via scroll / reset
-  useEffect(() => {
-    setLeva({ activeLayerCtrl: activeLayer });
-  }, [activeLayer, setLeva]);
-
-  // Need to update the max bound for the active layer slider when grid size changes
+  // Sync state to Leva when activeLayer changes via scroll / reset
   useEffect(() => {
     setLeva({
-      activeLayerCtrl: {
-        max: gridSize - 1,
-      } as any
+      activeLayerCtrl: activeLayer,
     });
-  }, [gridSize, setLeva]);
+  }, [activeLayer, setLeva]);
 
   // Handle Play/Pause timer
   useEffect(() => {
@@ -150,7 +166,7 @@ function App() {
 
     window.addEventListener('wheel', handleWheel, { passive: false });
     return () => window.removeEventListener('wheel', handleWheel);
-  }, []);
+  }, [gridSize]); // Must depend on gridSize so the max bounds aren't stale
 
   return (
     <div style={{ width: '100vw', height: '100vh', background: '#1a1a1a' }}>
@@ -185,8 +201,7 @@ function App() {
           onCellToggle={handleCellToggle}
         />
 
-        {/* Disable zooming when shift is held down */}
-        <OrbitControls makeDefault enableZoom={!isShiftDown} enableDamping={true} dampingFactor={0.05} />
+        <CameraManager gridSize={gridSize} isShiftDown={isShiftDown} />
       </Canvas>
     </div>
   );
