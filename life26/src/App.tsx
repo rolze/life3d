@@ -1,14 +1,40 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { OrbitControls, Stars } from '@react-three/drei';
 import { useControls, button } from 'leva';
 import { useThree } from '@react-three/fiber';
+import { EffectComposer, Bloom } from '@react-three/postprocessing';
+import * as THREE from 'three';
 import { CellGrid } from './CellGrid';
 import { createEmptyGrid, nextGeneration } from './gameLogic';
 
+const RotatingStars = () => {
+  const starsRef = useRef<THREE.Points>(null);
+  useFrame(() => {
+    if (starsRef.current) {
+      starsRef.current.rotation.y += 0.0005;
+      starsRef.current.rotation.x += 0.0002;
+    }
+  });
+
+  return (
+    <Stars
+      ref={starsRef}
+      radius={100}
+      depth={50}
+      count={5000}
+      factor={4}
+      saturation={0}
+      fade
+      speed={1}
+    />
+  );
+};
+
 const CameraManager = ({ gridSize, isShiftDown }: { gridSize: number, isShiftDown: boolean }) => {
   const { camera } = useThree();
-  const controlsRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const controlsRef = useRef<any>(null); // OrbitControls type isn't fully exported in older drei versions easily
 
   useEffect(() => {
     // Reset camera position when grid size changes to keep it in view
@@ -191,7 +217,10 @@ function App() {
       </div>
 
       <Canvas camera={{ position: [22, 15, 22], fov: 45 }}>
-        <color attach="background" args={['#1a1a1a']} />
+        <color attach="background" args={['#050510']} />
+
+        <RotatingStars />
+
         <ambientLight intensity={0.6} />
         <directionalLight position={[10, 20, 10]} intensity={1.5} />
 
@@ -202,6 +231,15 @@ function App() {
         />
 
         <CameraManager gridSize={gridSize} isShiftDown={isShiftDown} />
+
+        <EffectComposer>
+          <Bloom
+            luminanceThreshold={0.2}
+            luminanceSmoothing={0.9}
+            intensity={1.5}
+            mipmapBlur
+          />
+        </EffectComposer>
       </Canvas>
     </div>
   );
