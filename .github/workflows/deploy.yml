@@ -28,7 +28,7 @@ jobs:
         run: npm run build
         working-directory: life26
 
-      - name: Deploy via FTP (sync + delete old files)
+      - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: ${{ secrets.FTP_SERVER }}
@@ -36,4 +36,3 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./life26/dist/
           server-dir: /
-          dangerous-clean-slate: true  # ⚠️ deletes all remote files before upload
