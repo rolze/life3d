@@ -13,28 +13,36 @@ export const createEmptyGrid = (size: number): Grid3D => {
 export const countNeighbors = (grid: Grid3D, x: number, y: number, z: number): number => {
   const size = grid.length;
   let count = 0;
-  for (let dx = -1; dx <= 1; dx++) {
-    for (let dy = -1; dy <= 1; dy++) {
-      for (let dz = -1; dz <= 1; dz++) {
-        if (dx === 0 && dy === 0 && dz === 0) continue; // Skip self
 
-        // Finite boundaries
-        const nx = x + dx;
-        const ny = y + dy;
-        const nz = z + dz;
+  const xStart = x > 0 ? x - 1 : 0;
+  const xEnd = x < size - 1 ? x + 1 : size - 1;
+  const yStart = y > 0 ? y - 1 : 0;
+  const yEnd = y < size - 1 ? y + 1 : size - 1;
+  const zStart = z > 0 ? z - 1 : 0;
+  const zEnd = z < size - 1 ? z + 1 : size - 1;
 
-        if (
-          nx >= 0 && nx < size &&
-          ny >= 0 && ny < size &&
-          nz >= 0 && nz < size
-        ) {
-          if (grid[nx][ny][nz]) {
-            count++;
-          }
+  for (let nx = xStart; nx <= xEnd; nx++) {
+    const gridX = grid[nx];
+    for (let ny = yStart; ny <= yEnd; ny++) {
+      const gridXY = gridX[ny];
+      for (let nz = zStart; nz <= zEnd; nz++) {
+        if (gridXY[nz]) {
+          count++;
         }
       }
     }
   }
+
+  // Subtract self if it was alive (we counted the 3x3x3 cube)
+  if (
+    x >= 0 && x < size &&
+    y >= 0 && y < size &&
+    z >= 0 && z < size &&
+    grid[x][y][z]
+  ) {
+    count--;
+  }
+
   return count;
 };
 
