@@ -148,9 +148,9 @@ function App() {
   // Handle cell toggling from CellGrid
   const handleCellToggle = useCallback((x: number, y: number, z: number) => {
     setGrid(prev => {
-      const newGrid = prev.map(layerX =>
-        layerX.map(layerY => [...layerY])
-      );
+      const newGrid = [...prev];
+      newGrid[x] = [...prev[x]];
+      newGrid[x][y] = [...prev[x][y]];
       newGrid[x][y][z] = !newGrid[x][y][z];
       return newGrid;
     });
