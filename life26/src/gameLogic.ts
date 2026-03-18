@@ -13,24 +13,22 @@ export const createEmptyGrid = (size: number): Grid3D => {
 export const countNeighbors = (grid: Grid3D, x: number, y: number, z: number): number => {
   const size = grid.length;
   let count = 0;
-  for (let dx = -1; dx <= 1; dx++) {
-    for (let dy = -1; dy <= 1; dy++) {
-      for (let dz = -1; dz <= 1; dz++) {
-        if (dx === 0 && dy === 0 && dz === 0) continue; // Skip self
 
-        // Finite boundaries
-        const nx = x + dx;
-        const ny = y + dy;
-        const nz = z + dz;
+  const xStart = Math.max(0, x - 1);
+  const xEnd = Math.min(size - 1, x + 1);
+  const yStart = Math.max(0, y - 1);
+  const yEnd = Math.min(size - 1, y + 1);
+  const zStart = Math.max(0, z - 1);
+  const zEnd = Math.min(size - 1, z + 1);
 
-        if (
-          nx >= 0 && nx < size &&
-          ny >= 0 && ny < size &&
-          nz >= 0 && nz < size
-        ) {
-          if (grid[nx][ny][nz]) {
-            count++;
-          }
+  for (let nx = xStart; nx <= xEnd; nx++) {
+    const gridX = grid[nx];
+    for (let ny = yStart; ny <= yEnd; ny++) {
+      const gridXY = gridX[ny];
+      for (let nz = zStart; nz <= zEnd; nz++) {
+        if (nx === x && ny === y && nz === z) continue; // Skip self
+        if (gridXY[nz]) {
+          count++;
         }
       }
     }
