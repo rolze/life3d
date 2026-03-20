@@ -6,7 +6,7 @@ import { useThree } from '@react-three/fiber';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { CellGrid } from './CellGrid';
-import { createEmptyGrid, nextGeneration } from './gameLogic';
+import { createEmptyState, createEmptyGrid, nextGeneration } from './gameLogic';
 
 const RotatingStars = () => {
   const starsRef = useRef<THREE.Points>(null);
@@ -55,7 +55,7 @@ const CameraManager = ({ gridSize, isShiftDown }: { gridSize: number, isShiftDow
 
 function App() {
   const [gridSize, setGridSize] = useState(15);
-  const [grid, setGrid] = useState(createEmptyGrid(15));
+  const [gameState, setGameState] = useState(createEmptyState(15));
   const [activeLayer, setActiveLayer] = useState(Math.floor(15 / 2));
   const [isRunning, setIsRunning] = useState(false);
   const [isShiftDown, setIsShiftDown] = useState(false);
@@ -74,7 +74,7 @@ function App() {
       label: 'Grid Size',
       onChange: (val) => {
         setGridSize(val);
-        setGrid(createEmptyGrid(val));
+        setGameState(createEmptyState(val));
         setActiveLayer(prev => Math.min(prev, val - 1));
       }
     },
@@ -97,16 +97,16 @@ function App() {
       setIsRunning(prev => !prev);
     }),
     Step: button(() => {
-      setGrid(prevGrid => nextGeneration(prevGrid));
+      setGameState(prev => nextGeneration(prev.grid));
     }),
     Clear: button(() => {
       setIsRunning(false);
-      setGrid(g => createEmptyGrid(g.length));
+      setGameState(g => createEmptyState(g.grid.length));
     }),
     'Reset Pattern': button(() => {
       setIsRunning(false);
-      setGrid(g => {
-        const size = g.length;
+      setGameState(g => {
+        const size = g.grid.length;
         const newGrid = createEmptyGrid(size);
         const mid = Math.floor(size / 2);
         newGrid[mid][mid][mid] = true;
@@ -114,7 +114,7 @@ function App() {
         newGrid[mid][mid - 1][mid] = true;
         newGrid[mid + 1][mid][mid] = true;
         newGrid[mid][mid][mid + 1] = true;
-        return newGrid;
+        return { grid: newGrid, deadCells: [] };
       });
     })
   }), [gridSize]); // Dependency array here ensures `max` bound is updated when gridSize changes
@@ -130,7 +130,7 @@ function App() {
   useEffect(() => {
     if (isRunning) {
       intervalRef.current = window.setInterval(() => {
-        setGrid(prevGrid => nextGeneration(prevGrid));
+        setGameState(prev => nextGeneration(prev.grid));
       }, speed);
     } else {
       if (intervalRef.current) {
@@ -147,12 +147,21 @@ function App() {
 
   // Handle cell toggling from CellGrid
   const handleCellToggle = useCallback((x: number, y: number, z: number) => {
-    setGrid(prev => {
-      const newGrid = [...prev];
-      newGrid[x] = [...prev[x]];
-      newGrid[x][y] = [...prev[x][y]];
-      newGrid[x][y][z] = !newGrid[x][y][z];
-      return newGrid;
+    setGameState(prev => {
+      const prevGrid = prev.grid;
+      const newGrid = [...prevGrid];
+      newGrid[x] = [...prevGrid[x]];
+      newGrid[x][y] = [...prevGrid[x][y]];
+
+      const wasAlive = prevGrid[x][y][z];
+      const isAlive = !wasAlive;
+
+      newGrid[x][y][z] = isAlive;
+
+      // If cell was manually killed, spawn an explosion
+      const deadCells = (!isAlive) ? [{ x, y, z }] : [];
+
+      return { grid: newGrid, deadCells };
     });
   }, []);
 
@@ -225,7 +234,8 @@ function App() {
         <directionalLight position={[10, 20, 10]} intensity={1.5} />
 
         <CellGrid
-          grid={grid}
+          grid={gameState.grid}
+          deadCells={gameState.deadCells}
           activeLayer={activeLayer}
           onCellToggle={handleCellToggle}
         />

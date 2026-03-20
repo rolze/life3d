@@ -1,5 +1,16 @@
 export type Grid3D = boolean[][][];
 
+export interface DeadCell {
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface GameState {
+  grid: Grid3D;
+  deadCells: DeadCell[];
+}
+
 // Initialize an empty grid
 export const createEmptyGrid = (size: number): Grid3D => {
   return Array.from({ length: size }, () =>
@@ -8,6 +19,11 @@ export const createEmptyGrid = (size: number): Grid3D => {
     )
   );
 };
+
+export const createEmptyState = (size: number): GameState => ({
+  grid: createEmptyGrid(size),
+  deadCells: [],
+});
 
 // Count living neighbors (26-neighbor Moore neighborhood)
 export const countNeighbors = (grid: Grid3D, x: number, y: number, z: number): number => {
@@ -37,9 +53,10 @@ export const countNeighbors = (grid: Grid3D, x: number, y: number, z: number): n
 };
 
 // Calculate next generation based on Life 4555 rules
-export const nextGeneration = (grid: Grid3D): Grid3D => {
+export const nextGeneration = (grid: Grid3D): GameState => {
   const size = grid.length;
   const newGrid = createEmptyGrid(size);
+  const deadCells: DeadCell[] = [];
 
   for (let x = 0; x < size; x++) {
     for (let y = 0; y < size; y++) {
@@ -51,6 +68,8 @@ export const nextGeneration = (grid: Grid3D): Grid3D => {
           // Survive: 4 or 5 neighbors
           if (neighbors === 4 || neighbors === 5) {
             newGrid[x][y][z] = true;
+          } else {
+            deadCells.push({ x, y, z });
           }
         } else {
           // Birth: exactly 5 neighbors
@@ -62,5 +81,5 @@ export const nextGeneration = (grid: Grid3D): Grid3D => {
     }
   }
 
-  return newGrid;
+  return { grid: newGrid, deadCells };
 };
