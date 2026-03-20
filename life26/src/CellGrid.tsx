@@ -1,11 +1,12 @@
 import React, { useRef, useState, useMemo, useEffect } from 'react';
 import { type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
-import { type Grid3D } from './gameLogic';
+import { type Grid3D, type DeadCell } from './gameLogic';
 import { ParticleSystem } from './ParticleSystem';
 
 interface GridProps {
   grid: Grid3D;
+  deadCells?: DeadCell[];
   cellSize?: number;
   gap?: number;
   activeLayer: number;
@@ -14,6 +15,7 @@ interface GridProps {
 
 export const CellGrid: React.FC<GridProps> = ({
   grid,
+  deadCells = [],
   cellSize = 0.8,
   gap = 0.2,
   activeLayer,
@@ -29,49 +31,28 @@ export const CellGrid: React.FC<GridProps> = ({
 
   const dummy = useMemo(() => new THREE.Object3D(), []);
 
-  // Track previous grid state to detect cell deaths
-  const prevGridRef = useRef<Grid3D>(grid);
-
   // Track active particle systems
   const [explosions, setExplosions] = useState<Array<{ id: string; x: number; y: number; z: number }>>([]);
+
+  // Handle incoming dead cells
+  useEffect(() => {
+    if (deadCells && deadCells.length > 0) {
+      const newExplosions = deadCells.map(dc => ({
+        ...dc,
+        id: `${dc.x}-${dc.y}-${dc.z}-${Date.now()}-${Math.random()}`,
+      }));
+      // Defer state update to avoid cascading renders
+      setTimeout(() => {
+        setExplosions(prev => [...prev, ...newExplosions]);
+      }, 0);
+    }
+  }, [deadCells]);
 
   // X is right/left, Y is up/down, Z is forward/backward
   const planeY = activeLayer * cellStride - offset;
 
   // Update instances only when the grid changes to prevent massive performance drops on larger sizes
   useEffect(() => {
-    // Detect cell deaths and spawn explosions
-    const prevGrid = prevGridRef.current;
-    const newExplosions: Array<{ id: string; x: number; y: number; z: number }> = [];
-
-    // Skip explosion detection if the grid size changed (e.g. clear/reset or resize)
-    if (prevGrid.length === grid.length) {
-      for (let x = 0; x < gridSize; x++) {
-        for (let y = 0; y < gridSize; y++) {
-          for (let z = 0; z < gridSize; z++) {
-            if (prevGrid[x][y][z] && !grid[x][y][z]) {
-              // Cell died, spawn explosion
-              newExplosions.push({
-                id: `${x}-${y}-${z}-${Date.now()}-${Math.random()}`,
-                x,
-                y,
-                z,
-              });
-            }
-          }
-        }
-      }
-    }
-
-    if (newExplosions.length > 0) {
-      // Defer state update to avoid cascading renders
-      setTimeout(() => {
-        setExplosions(prev => [...prev, ...newExplosions]);
-      }, 0);
-    }
-
-    prevGridRef.current = grid;
-
     if (!meshRef.current) return;
 
     let i = 0;
