@@ -55,30 +55,30 @@ export const CellGrid: React.FC<GridProps> = ({
   useEffect(() => {
     if (!meshRef.current) return;
 
-    let i = 0;
+    let aliveCount = 0;
     for (let x = 0; x < gridSize; x++) {
       for (let y = 0; y < gridSize; y++) {
         for (let z = 0; z < gridSize; z++) {
           const isAlive = grid[x][y][z];
 
-          dummy.position.set(
-            x * cellStride - offset,
-            y * cellStride - offset,
-            z * cellStride - offset
-          );
-
           if (isAlive) {
-            dummy.scale.set(1, 1, 1);
-          } else {
-            dummy.scale.set(0, 0, 0);
-          }
+            dummy.position.set(
+              x * cellStride - offset,
+              y * cellStride - offset,
+              z * cellStride - offset
+            );
 
-          dummy.updateMatrix();
-          meshRef.current.setMatrixAt(i, dummy.matrix);
-          i++;
+            // Since we only process alive cells, scale is always 1
+            dummy.scale.set(1, 1, 1);
+
+            dummy.updateMatrix();
+            meshRef.current.setMatrixAt(aliveCount, dummy.matrix);
+            aliveCount++;
+          }
         }
       }
     }
+    meshRef.current.count = aliveCount;
     meshRef.current.instanceMatrix.needsUpdate = true;
   }, [grid, gridSize, cellStride, offset, dummy]);
 
