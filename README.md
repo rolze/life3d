@@ -18,7 +18,7 @@ Or use Dosbox ;)
 
 ## Further details (German)
 
-See https://rolze.com/1995/03/life-3d/
+See https://rolze.com/events/1995-03-life-3d/
 
 
 
