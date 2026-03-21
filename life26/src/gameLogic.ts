@@ -40,6 +40,117 @@ export const createEmptyState = (size: number): GameState => ({
   activeCells: new Set<number>(),
 });
 
+// Glider pattern for Life 4555
+export const getGliderPattern = () => [
+  {x: 1, y: 0, z: 0}, {x: 2, y: 0, z: 0},
+  {x: 0, y: 1, z: 0}, {x: 3, y: 1, z: 0},
+  {x: 0, y: 2, z: 0}, {x: 3, y: 2, z: 0},
+
+  {x: 1, y: 1, z: 1}, {x: 2, y: 1, z: 1},
+  {x: 1, y: 2, z: 1}, {x: 2, y: 2, z: 1}
+];
+
+export const createRandomGlidersState = (size: number, count: number = 6): GameState => {
+  const newGrid = createEmptyGrid(size);
+  const activeCells = new Set<number>();
+  const gliderPattern = getGliderPattern();
+
+  const rotateX = (point: {x: number, y: number, z: number}, deg: number) => {
+    const {x, y, z} = point;
+    const rad = deg * Math.PI / 180;
+    const newY = Math.round(y * Math.cos(rad) - z * Math.sin(rad));
+    const newZ = Math.round(y * Math.sin(rad) + z * Math.cos(rad));
+    return {x, y: newY, z: newZ};
+  };
+
+  const rotateY = (point: {x: number, y: number, z: number}, deg: number) => {
+    const {x, y, z} = point;
+    const rad = deg * Math.PI / 180;
+    const newX = Math.round(x * Math.cos(rad) + z * Math.sin(rad));
+    const newZ = Math.round(-x * Math.sin(rad) + z * Math.cos(rad));
+    return {x: newX, y, z: newZ};
+  };
+
+  const rotateZ = (point: {x: number, y: number, z: number}, deg: number) => {
+    const {x, y, z} = point;
+    const rad = deg * Math.PI / 180;
+    const newX = Math.round(x * Math.cos(rad) - y * Math.sin(rad));
+    const newY = Math.round(x * Math.sin(rad) + y * Math.cos(rad));
+    return {x: newX, y: newY, z};
+  };
+
+  let glidersPlaced = 0;
+  let attempts = 0;
+  const maxAttempts = 1000;
+
+  while (glidersPlaced < count && attempts < maxAttempts) {
+    attempts++;
+
+    // Rotate pattern randomly
+    const angles = [0, 90, 180, 270];
+    const angX = angles[Math.floor(Math.random() * 4)];
+    const angY = angles[Math.floor(Math.random() * 4)];
+    const angZ = angles[Math.floor(Math.random() * 4)];
+
+    let rotated = gliderPattern.map(p => rotateZ(rotateY(rotateX(p, angX), angY), angZ));
+
+    const minX = Math.min(...rotated.map(p => p.x));
+    const minY = Math.min(...rotated.map(p => p.y));
+    const minZ = Math.min(...rotated.map(p => p.z));
+
+    rotated = rotated.map(p => ({
+      x: p.x - minX,
+      y: p.y - minY,
+      z: p.z - minZ
+    }));
+
+    const maxX = Math.max(...rotated.map(p => p.x));
+    const maxY = Math.max(...rotated.map(p => p.y));
+    const maxZ = Math.max(...rotated.map(p => p.z));
+
+    // Choose random position with padding to avoid clipping
+    const padding = 2;
+    if (size <= padding * 2 + Math.max(maxX, maxY, maxZ)) {
+       break; // Grid too small to fit glider with padding
+    }
+
+    const startX = Math.floor(Math.random() * (size - maxX - padding * 2)) + padding;
+    const startY = Math.floor(Math.random() * (size - maxY - padding * 2)) + padding;
+    const startZ = Math.floor(Math.random() * (size - maxZ - padding * 2)) + padding;
+
+    // Check for overlap in a bounding box to avoid intersecting gliders
+    let overlap = false;
+    for (let x = startX - 1; x <= startX + maxX + 1; x++) {
+      for (let y = startY - 1; y <= startY + maxY + 1; y++) {
+        for (let z = startZ - 1; z <= startZ + maxZ + 1; z++) {
+          if (x >= 0 && x < size && y >= 0 && y < size && z >= 0 && z < size) {
+            if (newGrid[x][y][z]) {
+              overlap = true;
+              break;
+            }
+          }
+        }
+        if (overlap) break;
+      }
+      if (overlap) break;
+    }
+
+    if (!overlap) {
+      // Place glider
+      for (const p of rotated) {
+        const px = startX + p.x;
+        const py = startY + p.y;
+        const pz = startZ + p.z;
+        newGrid[px][py][pz] = true;
+        activeCells.add(getIndex(px, py, pz, size));
+      }
+      glidersPlaced++;
+    }
+  }
+
+  return { grid: newGrid, deadCells: [], activeCells };
+};
+
 // Count living neighbors (26-neighbor Moore neighborhood)
 export const countNeighbors = (grid: Grid3D, x: number, y: number, z: number): number => {
   const size = grid.length;
