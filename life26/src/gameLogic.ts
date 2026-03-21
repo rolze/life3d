@@ -9,7 +9,21 @@ export interface DeadCell {
 export interface GameState {
   grid: Grid3D;
   deadCells: DeadCell[];
+  activeCells: Set<number>;
 }
+
+// Convert 3D coordinates to 1D index
+export const getIndex = (x: number, y: number, z: number, size: number): number => {
+  return x * size * size + y * size + z;
+};
+
+// Convert 1D index to 3D coordinates
+export const getCoords = (index: number, size: number): { x: number; y: number; z: number } => {
+  const z = index % size;
+  const y = Math.floor(index / size) % size;
+  const x = Math.floor(index / (size * size));
+  return { x, y, z };
+};
 
 // Initialize an empty grid
 export const createEmptyGrid = (size: number): Grid3D => {
@@ -23,6 +37,7 @@ export const createEmptyGrid = (size: number): Grid3D => {
 export const createEmptyState = (size: number): GameState => ({
   grid: createEmptyGrid(size),
   deadCells: [],
+  activeCells: new Set<number>(),
 });
 
 // Count living neighbors (26-neighbor Moore neighborhood)
@@ -52,34 +67,69 @@ export const countNeighbors = (grid: Grid3D, x: number, y: number, z: number): n
   return count;
 };
 
-// Calculate next generation based on Life 4555 rules
-export const nextGeneration = (grid: Grid3D): GameState => {
+// Calculate next generation based on Life 4555 rules using sparse active cells representation
+export const nextGeneration = (gameState: GameState): GameState => {
+  const { grid, activeCells } = gameState;
   const size = grid.length;
-  const newGrid = createEmptyGrid(size);
-  const deadCells: DeadCell[] = [];
 
-  for (let x = 0; x < size; x++) {
-    for (let y = 0; y < size; y++) {
-      for (let z = 0; z < size; z++) {
-        const neighbors = countNeighbors(grid, x, y, z);
-        const isAlive = grid[x][y][z];
+  const neighborCounts = new Map<number, number>();
 
-        if (isAlive) {
-          // Survive: 4 or 5 neighbors
-          if (neighbors === 4 || neighbors === 5) {
-            newGrid[x][y][z] = true;
-          } else {
-            deadCells.push({ x, y, z });
-          }
-        } else {
-          // Birth: exactly 5 neighbors
-          if (neighbors === 5) {
-            newGrid[x][y][z] = true;
-          }
+  // Count neighbors only around active cells
+  for (const index of activeCells) {
+    const { x, y, z } = getCoords(index, size);
+
+    const xStart = Math.max(0, x - 1);
+    const xEnd = Math.min(size - 1, x + 1);
+    const yStart = Math.max(0, y - 1);
+    const yEnd = Math.min(size - 1, y + 1);
+    const zStart = Math.max(0, z - 1);
+    const zEnd = Math.min(size - 1, z + 1);
+
+    for (let nx = xStart; nx <= xEnd; nx++) {
+      for (let ny = yStart; ny <= yEnd; ny++) {
+        for (let nz = zStart; nz <= zEnd; nz++) {
+          if (nx === x && ny === y && nz === z) continue; // Skip self
+
+          const neighborIndex = getIndex(nx, ny, nz, size);
+          neighborCounts.set(neighborIndex, (neighborCounts.get(neighborIndex) || 0) + 1);
         }
       }
     }
   }
 
-  return { grid: newGrid, deadCells };
+  const newGrid = createEmptyGrid(size);
+  const newActiveCells = new Set<number>();
+  const deadCells: DeadCell[] = [];
+
+  // Evaluate cells that have at least one neighbor
+  for (const [index, neighbors] of neighborCounts.entries()) {
+    const { x, y, z } = getCoords(index, size);
+    const isAlive = grid[x][y][z];
+
+    if (isAlive) {
+      // Survive: 4 or 5 neighbors
+      if (neighbors === 4 || neighbors === 5) {
+        newGrid[x][y][z] = true;
+        newActiveCells.add(index);
+      }
+    } else {
+      // Birth: exactly 5 neighbors
+      if (neighbors === 5) {
+        newGrid[x][y][z] = true;
+        newActiveCells.add(index);
+      }
+    }
+  }
+
+  // Handle active cells that might not be in neighborCounts (i.e., 0 neighbors)
+  // Or handle deadCells calculation. Since dead cells only matter for UI explosions,
+  // we just need to find active cells that didn't survive
+  for (const index of activeCells) {
+    if (!newActiveCells.has(index)) {
+      const { x, y, z } = getCoords(index, size);
+      deadCells.push({ x, y, z });
+    }
+  }
+
+  return { grid: newGrid, deadCells, activeCells: newActiveCells };
 };

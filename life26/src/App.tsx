@@ -6,7 +6,7 @@ import { useThree } from '@react-three/fiber';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { CellGrid } from './CellGrid';
-import { createEmptyState, createEmptyGrid, nextGeneration } from './gameLogic';
+import { createEmptyState, createEmptyGrid, nextGeneration, getIndex } from './gameLogic';
 
 const RotatingStars = () => {
   const starsRef = useRef<THREE.Points>(null);
@@ -97,7 +97,7 @@ function App() {
       setIsRunning(prev => !prev);
     }),
     Step: button(() => {
-      setGameState(prev => nextGeneration(prev.grid));
+      setGameState(prev => nextGeneration(prev));
     }),
     Clear: button(() => {
       setIsRunning(false);
@@ -108,13 +108,21 @@ function App() {
       setGameState(g => {
         const size = g.grid.length;
         const newGrid = createEmptyGrid(size);
+        const activeCells = new Set<number>();
         const mid = Math.floor(size / 2);
-        newGrid[mid][mid][mid] = true;
-        newGrid[mid][mid + 1][mid] = true;
-        newGrid[mid][mid - 1][mid] = true;
-        newGrid[mid + 1][mid][mid] = true;
-        newGrid[mid][mid][mid + 1] = true;
-        return { grid: newGrid, deadCells: [] };
+
+        const addCell = (x: number, y: number, z: number) => {
+          newGrid[x][y][z] = true;
+          activeCells.add(getIndex(x, y, z, size));
+        };
+
+        addCell(mid, mid, mid);
+        addCell(mid, mid + 1, mid);
+        addCell(mid, mid - 1, mid);
+        addCell(mid + 1, mid, mid);
+        addCell(mid, mid, mid + 1);
+
+        return { grid: newGrid, deadCells: [], activeCells };
       });
     })
   }), [gridSize]); // Dependency array here ensures `max` bound is updated when gridSize changes
@@ -130,7 +138,7 @@ function App() {
   useEffect(() => {
     if (isRunning) {
       intervalRef.current = window.setInterval(() => {
-        setGameState(prev => nextGeneration(prev.grid));
+        setGameState(prev => nextGeneration(prev));
       }, speed);
     } else {
       if (intervalRef.current) {
@@ -149,6 +157,7 @@ function App() {
   const handleCellToggle = useCallback((x: number, y: number, z: number) => {
     setGameState(prev => {
       const prevGrid = prev.grid;
+      const size = prevGrid.length;
       const newGrid = [...prevGrid];
       newGrid[x] = [...prevGrid[x]];
       newGrid[x][y] = [...prevGrid[x][y]];
@@ -158,10 +167,19 @@ function App() {
 
       newGrid[x][y][z] = isAlive;
 
+      const newActiveCells = new Set(prev.activeCells);
+      const index = getIndex(x, y, z, size);
+
+      if (isAlive) {
+        newActiveCells.add(index);
+      } else {
+        newActiveCells.delete(index);
+      }
+
       // If cell was manually killed, spawn an explosion
       const deadCells = (!isAlive) ? [{ x, y, z }] : [];
 
-      return { grid: newGrid, deadCells };
+      return { grid: newGrid, deadCells, activeCells: newActiveCells };
     });
   }, []);
 
