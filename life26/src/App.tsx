@@ -6,7 +6,7 @@ import { useThree } from '@react-three/fiber';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { CellGrid } from './CellGrid';
-import { createEmptyState, createEmptyGrid, nextGeneration, getIndex } from './gameLogic';
+import { createEmptyState, nextGeneration, getIndex, createRandomGlidersState } from './gameLogic';
 
 const RotatingStars = () => {
   const starsRef = useRef<THREE.Points>(null);
@@ -54,9 +54,9 @@ const CameraManager = ({ gridSize, isShiftDown }: { gridSize: number, isShiftDow
 };
 
 function App() {
-  const [gridSize, setGridSize] = useState(15);
-  const [gameState, setGameState] = useState(createEmptyState(15));
-  const [activeLayer, setActiveLayer] = useState(Math.floor(15 / 2));
+  const [gridSize, setGridSize] = useState(26);
+  const [gameState, setGameState] = useState(createRandomGlidersState(26));
+  const [activeLayer, setActiveLayer] = useState(Math.floor(26 / 2));
   const [isRunning, setIsRunning] = useState(false);
   const [isShiftDown, setIsShiftDown] = useState(false);
 
@@ -105,25 +105,7 @@ function App() {
     }),
     'Reset Pattern': button(() => {
       setIsRunning(false);
-      setGameState(g => {
-        const size = g.grid.length;
-        const newGrid = createEmptyGrid(size);
-        const activeCells = new Set<number>();
-        const mid = Math.floor(size / 2);
-
-        const addCell = (x: number, y: number, z: number) => {
-          newGrid[x][y][z] = true;
-          activeCells.add(getIndex(x, y, z, size));
-        };
-
-        addCell(mid, mid, mid);
-        addCell(mid, mid + 1, mid);
-        addCell(mid, mid - 1, mid);
-        addCell(mid + 1, mid, mid);
-        addCell(mid, mid, mid + 1);
-
-        return { grid: newGrid, deadCells: [], activeCells };
-      });
+      setGameState(g => createRandomGlidersState(g.grid.length));
     })
   }), [gridSize]); // Dependency array here ensures `max` bound is updated when gridSize changes
 
