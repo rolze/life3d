@@ -39,7 +39,7 @@ export const CellGrid: React.FC<GridProps> = ({
     if (deadCells && deadCells.length > 0) {
       const newExplosions = deadCells.map(dc => ({
         ...dc,
-        id: `${dc.x}-${dc.y}-${dc.z}-${Date.now()}-${Math.random()}`,
+        id: crypto.randomUUID(),
       }));
       // Defer state update to avoid cascading renders
       setTimeout(() => {
