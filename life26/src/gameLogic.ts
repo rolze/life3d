@@ -27,11 +27,14 @@ export const getCoords = (index: number, size: number): { x: number; y: number; 
 
 // Initialize an empty grid
 export const createEmptyGrid = (size: number): Grid3D => {
-  return Array.from({ length: size }, () =>
-    Array.from({ length: size }, () =>
-      Array.from({ length: size }, () => false)
-    )
-  );
+  const grid: boolean[][][] = new Array(size);
+  for (let x = 0; x < size; x++) {
+    grid[x] = new Array(size);
+    for (let y = 0; y < size; y++) {
+      grid[x][y] = new Array(size).fill(false);
+    }
+  }
+  return grid;
 };
 
 export const createEmptyState = (size: number): GameState => ({
