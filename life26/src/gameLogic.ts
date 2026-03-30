@@ -151,33 +151,6 @@ export const createRandomGlidersState = (size: number, count: number = 6): GameS
   return { grid: newGrid, deadCells: [], activeCells };
 };
 
-// Count living neighbors (26-neighbor Moore neighborhood)
-export const countNeighbors = (grid: Grid3D, x: number, y: number, z: number): number => {
-  const size = grid.length;
-  let count = 0;
-
-  const xStart = Math.max(0, x - 1);
-  const xEnd = Math.min(size - 1, x + 1);
-  const yStart = Math.max(0, y - 1);
-  const yEnd = Math.min(size - 1, y + 1);
-  const zStart = Math.max(0, z - 1);
-  const zEnd = Math.min(size - 1, z + 1);
-
-  for (let nx = xStart; nx <= xEnd; nx++) {
-    const gridX = grid[nx];
-    for (let ny = yStart; ny <= yEnd; ny++) {
-      const gridXY = gridX[ny];
-      for (let nz = zStart; nz <= zEnd; nz++) {
-        if (nx === x && ny === y && nz === z) continue; // Skip self
-        if (gridXY[nz]) {
-          count++;
-        }
-      }
-    }
-  }
-  return count;
-};
-
 // Calculate next generation based on Life 4555 rules using sparse active cells representation
 export const nextGeneration = (gameState: GameState): GameState => {
   const { grid, activeCells } = gameState;
