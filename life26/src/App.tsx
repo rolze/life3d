@@ -31,7 +31,7 @@ const RotatingStars = () => {
   );
 };
 
-const CameraManager = ({ gridSize, isShiftDown }: { gridSize: number, isShiftDown: boolean }) => {
+const CameraManager = ({ gridSize }: { gridSize: number }) => {
   const { camera } = useThree();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const controlsRef = useRef<any>(null); // OrbitControls type isn't fully exported in older drei versions easily
@@ -50,7 +50,7 @@ const CameraManager = ({ gridSize, isShiftDown }: { gridSize: number, isShiftDow
     }
   }, [gridSize, camera]);
 
-  return <OrbitControls ref={controlsRef} makeDefault enableZoom={!isShiftDown} enableDamping={true} dampingFactor={0.05} target={[0, 0, 0]} />;
+  return <OrbitControls ref={controlsRef} makeDefault enableZoom={true} enableDamping={true} dampingFactor={0.05} target={[0, 0, 0]} />;
 };
 
 function App() {
@@ -58,7 +58,6 @@ function App() {
   const [gameState, setGameState] = useState(createRandomGlidersState(26));
   const [activeLayer, setActiveLayer] = useState(Math.floor(26 / 2));
   const [isRunning, setIsRunning] = useState(false);
-  const [isShiftDown, setIsShiftDown] = useState(false);
 
   // Need a ref for the interval to be able to clear it
   const intervalRef = useRef<number | null>(null);
@@ -165,28 +164,12 @@ function App() {
     });
   }, []);
 
-  // Track shift key for disabling zoom
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Shift') setIsShiftDown(true);
-    };
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key === 'Shift') setIsShiftDown(false);
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, []);
-
   // Handle shift+mousewheel to change active layer
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
       if (e.shiftKey) {
         e.preventDefault(); // Prevent page scroll or zoom if possible
+        e.stopPropagation(); // Stop event from reaching OrbitControls zoom
         setActiveLayer(prev => {
           let nextLayer = prev;
           if (e.deltaY < 0) {
@@ -199,8 +182,8 @@ function App() {
       }
     };
 
-    window.addEventListener('wheel', handleWheel, { passive: false });
-    return () => window.removeEventListener('wheel', handleWheel);
+    window.addEventListener('wheel', handleWheel, { capture: true, passive: false });
+    return () => window.removeEventListener('wheel', handleWheel, { capture: true });
   }, [gridSize]); // Must depend on gridSize so the max bounds aren't stale
 
   return (
@@ -240,7 +223,7 @@ function App() {
           onCellToggle={handleCellToggle}
         />
 
-        <CameraManager gridSize={gridSize} isShiftDown={isShiftDown} />
+        <CameraManager gridSize={gridSize} />
 
         <EffectComposer>
           <Bloom
