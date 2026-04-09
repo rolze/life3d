@@ -219,6 +219,7 @@ function App() {
         <CellGrid
           grid={gameState.grid}
           deadCells={gameState.deadCells}
+          activeCells={gameState.activeCells}
           activeLayer={activeLayer}
           onCellToggle={handleCellToggle}
         />

@@ -1,12 +1,13 @@
 import React, { useRef, useState, useMemo, useEffect } from 'react';
 import { type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
-import { type Grid3D, type DeadCell } from './gameLogic';
+import { type Grid3D, type DeadCell, getCoords } from './gameLogic';
 import { ParticleSystem } from './ParticleSystem';
 
 interface GridProps {
   grid: Grid3D;
   deadCells?: DeadCell[];
+  activeCells: Set<number>;
   cellSize?: number;
   gap?: number;
   activeLayer: number;
@@ -16,6 +17,7 @@ interface GridProps {
 export const CellGrid: React.FC<GridProps> = ({
   grid,
   deadCells = [],
+  activeCells,
   cellSize = 0.8,
   gap = 0.2,
   activeLayer,
@@ -51,36 +53,30 @@ export const CellGrid: React.FC<GridProps> = ({
   // X is right/left, Y is up/down, Z is forward/backward
   const planeY = activeLayer * cellStride - offset;
 
-  // Update instances only when the grid changes to prevent massive performance drops on larger sizes
+  // Update instances only when the active cells change to prevent massive performance drops on larger sizes
   useEffect(() => {
     if (!meshRef.current) return;
 
     let aliveCount = 0;
-    for (let x = 0; x < gridSize; x++) {
-      for (let y = 0; y < gridSize; y++) {
-        for (let z = 0; z < gridSize; z++) {
-          const isAlive = grid[x][y][z];
+    for (const index of activeCells) {
+      const { x, y, z } = getCoords(index, gridSize);
 
-          if (isAlive) {
-            dummy.position.set(
-              x * cellStride - offset,
-              y * cellStride - offset,
-              z * cellStride - offset
-            );
+      dummy.position.set(
+        x * cellStride - offset,
+        y * cellStride - offset,
+        z * cellStride - offset
+      );
 
-            // Since we only process alive cells, scale is always 1
-            dummy.scale.set(1, 1, 1);
+      // Since we only process alive cells, scale is always 1
+      dummy.scale.set(1, 1, 1);
 
-            dummy.updateMatrix();
-            meshRef.current.setMatrixAt(aliveCount, dummy.matrix);
-            aliveCount++;
-          }
-        }
-      }
+      dummy.updateMatrix();
+      meshRef.current.setMatrixAt(aliveCount, dummy.matrix);
+      aliveCount++;
     }
     meshRef.current.count = aliveCount;
     meshRef.current.instanceMatrix.needsUpdate = true;
-  }, [grid, gridSize, cellStride, offset, dummy]);
+  }, [activeCells, gridSize, cellStride, offset, dummy]);
 
   const handlePointerMove = (e: ThreeEvent<PointerEvent>) => {
     // We only care about intersections on the active plane
