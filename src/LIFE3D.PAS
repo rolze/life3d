@@ -1219,7 +1219,7 @@ var size: Word;
        Dec(x,8);
        MoveTo(x,131);
      End;
-     If not(taste in [#8,#13,#0]) And (x<=278) Then Begin
+     If not(taste in [#8,#13,#0]) And (x<=278) And (length(filename)<251) Then Begin
        SetColor(0);
        filename:=filename+taste;
        OutText(taste);
@@ -1292,7 +1292,7 @@ var size: Word;
        End;
        If (taste=#8) and (length(path)=0) Then Begin
          Sound(3000); Delay(3); NoSound; End;
-       If not(taste in [#8,#13,#0]) And (x<=464) Then Begin
+       If not(taste in [#8,#13,#0]) And (x<=464) And (length(path)<255) Then Begin
          SetColor(0);
          path:=path+taste;
          ShowText(taste);
