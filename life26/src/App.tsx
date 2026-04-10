@@ -4,6 +4,7 @@ import { OrbitControls, Stars } from '@react-three/drei';
 import { useControls, button } from 'leva';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import * as THREE from 'three';
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { CellGrid } from './CellGrid';
 import { createEmptyState, nextGeneration, getIndex, createRandomGlidersState } from './gameLogic';
 
@@ -32,8 +33,7 @@ const RotatingStars = () => {
 
 const CameraManager = ({ gridSize }: { gridSize: number }) => {
   const { camera } = useThree();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const controlsRef = useRef<any>(null); // OrbitControls type isn't fully exported in older drei versions easily
+  const controlsRef = useRef<OrbitControlsImpl>(null);
 
   useEffect(() => {
     // Reset camera position when grid size changes to keep it in view
