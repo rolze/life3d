@@ -92,37 +92,45 @@ export const createRandomGlidersState = (size: number, count: number = 6): GameS
     const angY = angles[Math.floor(Math.random() * 4)];
     const angZ = angles[Math.floor(Math.random() * 4)];
 
-    let rotated = gliderPattern.map(p => rotateZ(rotateY(rotateX(p, angX), angY), angZ));
+    let minX = Infinity, minY = Infinity, minZ = Infinity;
+    let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
 
-    const minX = Math.min(...rotated.map(p => p.x));
-    const minY = Math.min(...rotated.map(p => p.y));
-    const minZ = Math.min(...rotated.map(p => p.z));
+    const rotatedRaw = gliderPattern.map(p => {
+      const rp = rotateZ(rotateY(rotateX(p, angX), angY), angZ);
+      if (rp.x < minX) minX = rp.x;
+      if (rp.y < minY) minY = rp.y;
+      if (rp.z < minZ) minZ = rp.z;
+      if (rp.x > maxX) maxX = rp.x;
+      if (rp.y > maxY) maxY = rp.y;
+      if (rp.z > maxZ) maxZ = rp.z;
+      return rp;
+    });
 
-    rotated = rotated.map(p => ({
+    const rotated = rotatedRaw.map(p => ({
       x: p.x - minX,
       y: p.y - minY,
       z: p.z - minZ
     }));
 
-    const maxX = Math.max(...rotated.map(p => p.x));
-    const maxY = Math.max(...rotated.map(p => p.y));
-    const maxZ = Math.max(...rotated.map(p => p.z));
+    const spanX = maxX - minX;
+    const spanY = maxY - minY;
+    const spanZ = maxZ - minZ;
 
     // Choose random position with padding to avoid clipping
     const padding = 2;
-    if (size <= padding * 2 + Math.max(maxX, maxY, maxZ)) {
+    if (size <= padding * 2 + Math.max(spanX, spanY, spanZ)) {
        break; // Grid too small to fit glider with padding
     }
 
-    const startX = Math.floor(Math.random() * (size - maxX - padding * 2)) + padding;
-    const startY = Math.floor(Math.random() * (size - maxY - padding * 2)) + padding;
-    const startZ = Math.floor(Math.random() * (size - maxZ - padding * 2)) + padding;
+    const startX = Math.floor(Math.random() * (size - spanX - padding * 2)) + padding;
+    const startY = Math.floor(Math.random() * (size - spanY - padding * 2)) + padding;
+    const startZ = Math.floor(Math.random() * (size - spanZ - padding * 2)) + padding;
 
     // Check for overlap in a bounding box to avoid intersecting gliders
     let overlap = false;
-    for (let x = startX - 1; x <= startX + maxX + 1; x++) {
-      for (let y = startY - 1; y <= startY + maxY + 1; y++) {
-        for (let z = startZ - 1; z <= startZ + maxZ + 1; z++) {
+    for (let x = startX - 1; x <= startX + spanX + 1; x++) {
+      for (let y = startY - 1; y <= startY + spanY + 1; y++) {
+        for (let z = startZ - 1; z <= startZ + spanZ + 1; z++) {
           if (x >= 0 && x < size && y >= 0 && y < size && z >= 0 && z < size) {
             if (newGrid[x][y][z]) {
               overlap = true;
