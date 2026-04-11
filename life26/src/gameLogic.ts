@@ -201,18 +201,12 @@ export const nextGeneration = (gameState: GameState): GameState => {
     const { x, y, z } = getCoords(index, size);
     const isAlive = grid[x][y][z];
 
-    if (isAlive) {
-      // Survive: 4 or 5 neighbors
-      if (neighbors === 4 || neighbors === 5) {
-        newGrid[x][y][z] = true;
-        newActiveCells.add(index);
-      }
-    } else {
-      // Birth: exactly 5 neighbors
-      if (neighbors === 5) {
-        newGrid[x][y][z] = true;
-        newActiveCells.add(index);
-      }
+    const shouldSurvive = isAlive && (neighbors === 4 || neighbors === 5);
+    const shouldBeBorn = !isAlive && neighbors === 5;
+
+    if (shouldSurvive || shouldBeBorn) {
+      newGrid[x][y][z] = true;
+      newActiveCells.add(index);
     }
   }
 
