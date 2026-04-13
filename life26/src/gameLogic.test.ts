@@ -1,5 +1,24 @@
-import { getGliderPattern } from './gameLogic.ts';
+import { getGliderPattern, secureRandom } from './gameLogic.ts';
 import assert from 'node:assert';
+
+console.log('Running secureRandom tests...');
+
+// 1. Check range
+for (let i = 0; i < 1000; i++) {
+  const val = secureRandom();
+  assert.ok(val >= 0 && val < 1, `Value ${val} should be in [0, 1)`);
+}
+
+// 2. Basic distribution check (very loose)
+let sum = 0;
+const iterations = 10000;
+for (let i = 0; i < iterations; i++) {
+  sum += secureRandom();
+}
+const average = sum / iterations;
+assert.ok(average > 0.4 && average < 0.6, `Average ${average} should be around 0.5`);
+
+console.log('✅ secureRandom tests passed!');
 
 console.log('Running getGliderPattern tests...');
 

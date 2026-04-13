@@ -12,6 +12,16 @@ export interface GameState {
   activeCells: Set<number>;
 }
 
+/**
+ * Secure replacement for Math.random() using Web Crypto API.
+ * Returns a floating-point, pseudo-random number in the range [0, 1).
+ */
+export const secureRandom = (): number => {
+  const array = new Uint32Array(1);
+  crypto.getRandomValues(array);
+  return array[0] / 0x100000000;
+};
+
 // Convert 3D coordinates to 1D index
 export const getIndex = (x: number, y: number, z: number, size: number): number => {
   return x * size * size + y * size + z;
@@ -91,9 +101,9 @@ export const createRandomGlidersState = (size: number, count: number = 6): GameS
 
     // Rotate pattern randomly
     const angles = [0, 90, 180, 270];
-    const angX = angles[Math.floor(Math.random() * 4)];
-    const angY = angles[Math.floor(Math.random() * 4)];
-    const angZ = angles[Math.floor(Math.random() * 4)];
+    const angX = angles[Math.floor(secureRandom() * 4)];
+    const angY = angles[Math.floor(secureRandom() * 4)];
+    const angZ = angles[Math.floor(secureRandom() * 4)];
 
     let minX = Infinity, minY = Infinity, minZ = Infinity;
     let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
@@ -125,9 +135,9 @@ export const createRandomGlidersState = (size: number, count: number = 6): GameS
        break; // Grid too small to fit glider with padding
     }
 
-    const startX = Math.floor(Math.random() * (size - spanX - padding * 2)) + padding;
-    const startY = Math.floor(Math.random() * (size - spanY - padding * 2)) + padding;
-    const startZ = Math.floor(Math.random() * (size - spanZ - padding * 2)) + padding;
+    const startX = Math.floor(secureRandom() * (size - spanX - padding * 2)) + padding;
+    const startY = Math.floor(secureRandom() * (size - spanY - padding * 2)) + padding;
+    const startZ = Math.floor(secureRandom() * (size - spanZ - padding * 2)) + padding;
 
     // Check for overlap in a bounding box to avoid intersecting gliders
     let overlap = false;
