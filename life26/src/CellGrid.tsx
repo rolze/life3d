@@ -7,7 +7,7 @@ import { ParticleSystem } from './ParticleSystem';
 interface GridProps {
   grid: Grid3D;
   deadCells?: DeadCell[];
-  activeCells: Set<number>;
+  activeCells: Map<number, { x: number; y: number; z: number }>;
   cellSize?: number;
   gap?: number;
   activeLayer: number;
@@ -58,9 +58,7 @@ export const CellGrid: React.FC<GridProps> = ({
     if (!meshRef.current) return;
 
     let aliveCount = 0;
-    for (const index of activeCells) {
-      const { x, y, z } = getCoords(index, gridSize);
-
+    for (const { x, y, z } of activeCells.values()) {
       dummy.position.set(
         x * cellStride - offset,
         y * cellStride - offset,
