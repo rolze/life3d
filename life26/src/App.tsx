@@ -147,11 +147,11 @@ function App() {
 
       newGrid[x][y][z] = isAlive;
 
-      const newActiveCells = new Set(prev.activeCells);
+      const newActiveCells = new Map(prev.activeCells);
       const index = getIndex(x, y, z, size);
 
       if (isAlive) {
-        newActiveCells.add(index);
+        newActiveCells.set(index, { x, y, z });
       } else {
         newActiveCells.delete(index);
       }

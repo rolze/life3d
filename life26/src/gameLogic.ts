@@ -9,7 +9,7 @@ export interface DeadCell {
 export interface GameState {
   grid: Grid3D;
   deadCells: DeadCell[];
-  activeCells: Set<number>;
+  activeCells: Map<number, { x: number; y: number; z: number }>;
 }
 
 // Convert 3D coordinates to 1D index
@@ -40,7 +40,7 @@ export const createEmptyGrid = (size: number): Grid3D => {
 export const createEmptyState = (size: number): GameState => ({
   grid: createEmptyGrid(size),
   deadCells: [],
-  activeCells: new Set<number>(),
+  activeCells: new Map<number, { x: number; y: number; z: number }>(),
 });
 
 // Glider pattern for Life 4555
@@ -55,7 +55,7 @@ export const getGliderPattern = () => [
 
 export const createRandomGlidersState = (size: number, count: number = 6): GameState => {
   const newGrid = createEmptyGrid(size);
-  const activeCells = new Set<number>();
+  const activeCells = new Map<number, { x: number; y: number; z: number }>();
   const gliderPattern = getGliderPattern();
 
   const rotateX = (point: {x: number, y: number, z: number}, deg: number) => {
@@ -153,7 +153,7 @@ export const createRandomGlidersState = (size: number, count: number = 6): GameS
         const py = startY + p.y;
         const pz = startZ + p.z;
         newGrid[px][py][pz] = true;
-        activeCells.add(getIndex(px, py, pz, size));
+        activeCells.set(getIndex(px, py, pz, size), { x: px, y: py, z: pz });
       }
       glidersPlaced++;
     }
@@ -167,12 +167,11 @@ export const nextGeneration = (gameState: GameState): GameState => {
   const { grid, activeCells } = gameState;
   const size = grid.length;
 
-  const neighborCounts = new Map<number, number>();
+  // Use a Map to store counts and coordinates to avoid re-calculating them later
+  const neighborCounts = new Map<number, { count: number; x: number; y: number; z: number }>();
 
   // Count neighbors only around active cells
-  for (const index of activeCells) {
-    const { x, y, z } = getCoords(index, size);
-
+  for (const { x, y, z } of activeCells.values()) {
     const xStart = Math.max(0, x - 1);
     const xEnd = Math.min(size - 1, x + 1);
     const yStart = Math.max(0, y - 1);
@@ -186,19 +185,23 @@ export const nextGeneration = (gameState: GameState): GameState => {
           if (nx === x && ny === y && nz === z) continue; // Skip self
 
           const neighborIndex = getIndex(nx, ny, nz, size);
-          neighborCounts.set(neighborIndex, (neighborCounts.get(neighborIndex) || 0) + 1);
+          const data = neighborCounts.get(neighborIndex);
+          if (data) {
+            data.count++;
+          } else {
+            neighborCounts.set(neighborIndex, { count: 1, x: nx, y: ny, z: nz });
+          }
         }
       }
     }
   }
 
   const newGrid = createEmptyGrid(size);
-  const newActiveCells = new Set<number>();
+  const newActiveCells = new Map<number, { x: number; y: number; z: number }>();
   const deadCells: DeadCell[] = [];
 
   // Evaluate cells that have at least one neighbor
-  for (const [index, neighbors] of neighborCounts.entries()) {
-    const { x, y, z } = getCoords(index, size);
+  for (const [index, { count: neighbors, x, y, z }] of neighborCounts.entries()) {
     const isAlive = grid[x][y][z];
 
     const shouldSurvive = isAlive && (neighbors === 4 || neighbors === 5);
@@ -206,17 +209,15 @@ export const nextGeneration = (gameState: GameState): GameState => {
 
     if (shouldSurvive || shouldBeBorn) {
       newGrid[x][y][z] = true;
-      newActiveCells.add(index);
+      newActiveCells.set(index, { x, y, z });
     }
   }
 
   // Handle active cells that might not be in neighborCounts (i.e., 0 neighbors)
-  // Or handle deadCells calculation. Since dead cells only matter for UI explosions,
-  // we just need to find active cells that didn't survive
-  for (const index of activeCells) {
+  // and handle deadCells calculation.
+  for (const [index, coords] of activeCells.entries()) {
     if (!newActiveCells.has(index)) {
-      const { x, y, z } = getCoords(index, size);
-      deadCells.push({ x, y, z });
+      deadCells.push(coords);
     }
   }
 
