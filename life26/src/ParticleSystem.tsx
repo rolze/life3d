@@ -1,6 +1,7 @@
 import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { secureRandom } from './gameLogic';
 
 interface ParticleSystemProps {
   position: [number, number, number];
@@ -29,11 +30,11 @@ export const ParticleSystem: React.FC<ParticleSystemProps> = ({
   const [particles] = React.useState(() => {
     return Array.from({ length: count }, () => {
       // Random direction sphere
-      const theta = Math.random() * 2 * Math.PI;
-      const phi = Math.acos(Math.random() * 2 - 1);
+      const theta = secureRandom() * 2 * Math.PI;
+      const phi = Math.acos(secureRandom() * 2 - 1);
 
       // Random speed
-      const speed = 1 + Math.random() * 2;
+      const speed = 1 + secureRandom() * 2;
 
       const vx = Math.sin(phi) * Math.cos(theta) * speed;
       const vy = Math.sin(phi) * Math.sin(theta) * speed;
